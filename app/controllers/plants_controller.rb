@@ -3,10 +3,16 @@ class PlantsController < ApplicationController
   skip_before_action :authenticate_user!, only: %i[index]
 
   def index
+
+    if params[:query].present?
+      @plants = policy_scope(Plant.search_by_name_species_address(params[:query]))
+    else
+      @plants = policy_scope(Plant).order(created_at: :desc)
     if user_signed_in?
       search_login
     else
       search_not_login
+
     end
     @markers = @plants.geocoded.map do |plant|
       {
