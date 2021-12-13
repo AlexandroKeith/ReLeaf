@@ -3,10 +3,16 @@ class PlantsController < ApplicationController
   skip_before_action :authenticate_user!, only: %i[index]
 
   def index
+
     if params[:query].present?
       @plants = policy_scope(Plant.search_by_name_species_address(params[:query]))
     else
       @plants = policy_scope(Plant).order(created_at: :desc)
+    if user_signed_in?
+      search_login
+    else
+      search_not_login
+
     end
     @markers = @plants.geocoded.map do |plant|
       {
@@ -21,6 +27,8 @@ class PlantsController < ApplicationController
   def show
     authorize @plant
     @booking = Booking.new
+    # @reviews_last = Review.last(3)
+    @reviews_last = @plant.reviews.last(3)
   end
 
   def new
@@ -62,10 +70,26 @@ class PlantsController < ApplicationController
   private
 
   def plant_params
-    params.require(:plant).permit(:species, :name, :description, :address, photos: [])
+    params.require(:plant).permit(:species, :name, :description, :address, :price, photos: [])
   end
 
   def set_plant
     @plant = Plant.find(params[:id])
+  end
+
+  def search_login
+    if params[:query].present?
+      @plants = policy_scope(Plant.search_by_name_species_address(params[:query])).where.not(user:current_user)
+    else
+      @plants = policy_scope(Plant.where.not(user:current_user)).order(created_at: :desc)
+    end
+  end
+
+  def search_not_login
+    if params[:query].present?
+      @plants = policy_scope(Plant.search_by_name_species_address(params[:query]))
+    else
+      @plants = policy_scope(Plant).order(created_at: :desc)
+    end
   end
 end
